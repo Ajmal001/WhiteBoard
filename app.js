@@ -4,7 +4,8 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
+var http = require('http');
+var paper = require('paper');
 var index = require('./routes/index');
 var users = require('./routes/users');
 
@@ -21,9 +22,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.use('/', index);
 app.use('/users', users);
+app.use('/scripts', express.static(path.join(__dirname, 'node_modules/paper/dist/')));
+
+app.set('port', process.env.PORT || 3000);
+var server = http.createServer(app).listen( app.get('port') );
+var io = require('socket.io').listen(server, function() {
+        console.log("Express server listening on port " + app.get('port'));
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -41,6 +48,17 @@ app.use(function(err, req, res, next) {
   // render the error page
   res.status(err.status || 500);
   res.render('error');
+});
+
+// open a socket
+io.sockets.on('connection', function (socket) {
+
+    socket.on( 'createNewPath', function( data, session ) {
+    	socket.broadcast.emit( 'createNewPath', data );
+	})
+	socket.on( 'pointDrag', function( data, session ) {
+    	socket.broadcast.emit( 'pointDrag', data );
+	})
 });
 
 module.exports = app;
